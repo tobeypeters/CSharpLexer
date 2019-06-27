@@ -180,7 +180,7 @@ public static class CSharpLexer
 
         bool ContainsUsingStatement(int inPosition) => (scintilla.GetTextRange(scintilla.Lines[scintilla.LineFromPosition(inPosition)].Position, 5)).Contains("using");
 
-        RegSearchForWordsIn(scintilla.GetTextRange(startPos, (endPos - startPos)), startPos);
+        if (MULTI_KEYWORDS.Count > 0) { RegSearchForWordsIn(scintilla.GetTextRange(startPos, (endPos - startPos)), startPos); }
 
         scintilla.StartStyling(startPos);
         {
@@ -211,7 +211,7 @@ public static class CSharpLexer
                     }
                     else if (char.IsLetter(c)) //Indentifier - Keywords, procedures, etc ...
                     {
-                        state = (MULTI_DICT.ContainsKey(startPos) ? STATE_MULTI_IDENTIFIER : STATE_IDENTIFIER);
+                        state = (((MULTI_KEYWORDS.Count > 0) && MULTI_DICT.ContainsKey(startPos)) ? STATE_MULTI_IDENTIFIER : STATE_IDENTIFIER);
                     }
                     else if (bString || VERBATIM || bFormatted || bFormattedVerbatim) //String
                     {
