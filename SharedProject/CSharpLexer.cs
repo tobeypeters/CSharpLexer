@@ -124,6 +124,8 @@ public static class CSharpLexer
         //Wasn't going to do it this way.  But, I guess, this is more "Flexible".
         CONTEXTUAL_KEYWORDS = new List<string>();
 
+        MULTI_KEYWORDS = new List<string>();
+
         if (inKeywords != "") { KEYWORDS = new List<string>(inKeywords.Split(' ')); }
         if (inContextualKeywords != "") { CONTEXTUAL_KEYWORDS.AddRange(inContextualKeywords.Split(' ').ToList()); }
         if (inUserKeywords != "") { USER_KEYWORDS = new List<string>(inUserKeywords.Split(' ')); }
