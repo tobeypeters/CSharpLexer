@@ -188,11 +188,12 @@ public static class CSharpLexer
         scintilla.StartStyling(startPos);
         {
             for (; startPos < endPos; startPos++)
-            {
-                //scintilla.StartStyling(startPos);
-                //Got rid of half the casts and half of the method calls.
+            {                
                 c = scintilla.Text[startPos];
-                d = (char)scintilla.GetCharAt(startPos + 1);
+
+                if ((state == STATE_UNKNOWN) && c == ' ') { DefaultStyle(); continue; } //Better than allowing it to set all the booleans and trickle down the if/else-if structure?
+
+                d = (((startPos + 1) < scintilla.Text.Length) ? scintilla.Text[startPos + 1] : '\0'); //d = (char)scintilla.GetCharAt(startPos + 1);
 
                 if (state == STATE_UNKNOWN)
                 {
@@ -201,7 +202,7 @@ public static class CSharpLexer
                                bNegativeNum = ((c == '-') && (char.IsDigit(d))),
                                   bFraction = ((c == '.') && (char.IsDigit(d))),
                                     bString = (c == '"'),
-                                    bQuotedString = (c == '\'');
+                              bQuotedString = (c == '\'');
 
                     VERBATIM = ((c == '@') && (d == '"'));
 
@@ -211,7 +212,7 @@ public static class CSharpLexer
                     //I always want braces to be highlighted 
                     if ((c == '{') || (c == '}'))
                     {
-                        scintilla.SetStyling(1, ((scintilla.BraceMatch(startPos) > -1) ? StyleBraces : StyleError)); //continue;
+                        scintilla.SetStyling(1, ((scintilla.BraceMatch(startPos) > -1) ? StyleBraces : StyleError));
                     }
                     else if (char.IsLetter(c)) //Indentifier - Keywords, procedures, etc ...
                     {
@@ -278,9 +279,9 @@ public static class CSharpLexer
                         int s = startPos;
 
                         startPos += (identifier.Length - 2);
-
-                        d = (char)scintilla.GetCharAt(startPos + 1);
                         
+                        d = (((startPos + 1) < scintilla.Text.Length) ? scintilla.Text[startPos + 1] : '\0'); //d = (char)scintilla.GetCharAt(startPos + 1);
+
                         bool OPEN_PAREN = (d == '(');
 
                         if (!OPEN_PAREN && KEYWORDS.Contains(identifier)) { style = StyleKeyword; } //Keywords
@@ -321,10 +322,7 @@ public static class CSharpLexer
                         break;
 
                     case STATE_STRING:
-                        //STUFF IN HERE PRETTY MUCH WORKS.  BUT, NEED TO CLEAN STUFF UP AND TWEAK THINGS.
-                        //ESPECIALLY SINCE I ADDED QUOTED STRINGS.
                         style = (VERBATIM ? StyleVerbatim : (QUOTED_STRING ? StyleQuotedString : StyleString));
-
 
                         if (PARENTHESIS || ((c == '{') || (d == '}'))) //Formatted strings that are using braces
                         {
@@ -333,7 +331,7 @@ public static class CSharpLexer
                         }
                         else if (QUOTED_STRING)
                         {
-                            if (c == '\'')
+                            if (c == '\'') //End of our Quoted string?
                             {
                                 QUOTED_STRING = false;
 
@@ -342,7 +340,7 @@ public static class CSharpLexer
                             }
                             else if (c == '\\')
                             {
-                                length += 1; startPos += 1;
+                                length++; startPos++;
                             }
                         }
                         else if (VERBATIM && ((c == '"') && (d == '"'))) //Skip over embedded quotation marks 
