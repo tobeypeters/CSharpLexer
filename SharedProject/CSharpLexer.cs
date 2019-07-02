@@ -78,7 +78,8 @@ public static class CSharpLexer
                         StyleUser = 14,
           StyleProcedureContainer = 15,
           StyleContainerProcedure = 16,
-             StyleMultiIdentifier = 17;
+             StyleMultiIdentifier = 17,
+                StyleQuotedString = 18;
 
     private const int STATE_UNKNOWN = 0,
                    STATE_IDENTIFIER = 1,
@@ -88,6 +89,7 @@ public static class CSharpLexer
                  STATE_PREPROCESSOR = 5,
                      STATE_OPERATOR = 6,
              STATE_MULTI_IDENTIFIER = 7;
+
 
     public static List<string> KEYWORDS, //Primary keywords
                     CONTEXTUAL_KEYWORDS, //Secondary keywords
@@ -157,13 +159,14 @@ public static class CSharpLexer
 
         int style, length = 0, state = STATE_UNKNOWN;
 
-        bool VERBATIM = false, PARENTHESIS = false;
-
-        char c = '\0', d = '\0';
-
         bool SINGLE_LINE_COMMENT,
               MULTI_LINE_COMMENT,
+                VERBATIM = false,
+             PARENTHESIS = false,
+           QUOTED_STRING = false,
                          DBL_OPR;
+
+        char c = '\0', d = '\0';
 
         void ClearState() { length = state = STATE_UNKNOWN; }
 
@@ -197,7 +200,8 @@ public static class CSharpLexer
                                  bFormatted = ((c == '$') && ((d == '"'))),
                                bNegativeNum = ((c == '-') && (char.IsDigit(d))),
                                   bFraction = ((c == '.') && (char.IsDigit(d))),
-                                    bString = (c == '"');
+                                    bString = (c == '"'),
+                                    bQuotedString = (c == '\'');
 
                     VERBATIM = ((c == '@') && (d == '"'));
 
@@ -213,11 +217,13 @@ public static class CSharpLexer
                     {
                         state = (((MULTI_KEYWORDS.Count > 0) && MULTI_DICT.ContainsKey(startPos)) ? STATE_MULTI_IDENTIFIER : STATE_IDENTIFIER);
                     }
-                    else if (bString || VERBATIM || bFormatted || bFormattedVerbatim) //String
+                    else if (bString || VERBATIM || bFormatted || bFormattedVerbatim || bQuotedString) //String
                     {
                         int len = ((VERBATIM || bFormatted || bFormattedVerbatim) ? ((bFormattedVerbatim) ? 3 : 2) : 1);
 
-                        scintilla.SetStyling(len, (!VERBATIM ? StyleString : StyleVerbatim));
+                        QUOTED_STRING = bQuotedString;
+
+                        scintilla.SetStyling(len, (!VERBATIM ? (QUOTED_STRING ? StyleQuotedString : StyleString) : StyleVerbatim));
 
                         startPos += (len - 1);
 
@@ -315,18 +321,35 @@ public static class CSharpLexer
                         break;
 
                     case STATE_STRING:
-                        style = (VERBATIM ? StyleVerbatim : StyleString);
+                        //STUFF IN HERE PRETTY MUCH WORKS.  BUT, NEED TO CLEAN STUFF UP AND TWEAK THINGS.
+                        //ESPECIALLY SINCE I ADDED QUOTED STRINGS.
+                        style = (VERBATIM ? StyleVerbatim : (QUOTED_STRING ? StyleQuotedString : StyleString));
+
 
                         if (PARENTHESIS || ((c == '{') || (d == '}'))) //Formatted strings that are using braces
                         {
                             if (c == '{') { PARENTHESIS = true; }
                             if (c == '}') { PARENTHESIS = false; }
                         }
+                        else if (QUOTED_STRING)
+                        {
+                            if (c == '\'')
+                            {
+                                QUOTED_STRING = false;
+
+                                scintilla.SetStyling(length, style);
+                                ClearState();
+                            }
+                            else if (c == '\\')
+                            {
+                                length += 1; startPos += 1;
+                            }
+                        }
                         else if (VERBATIM && ((c == '"') && (d == '"'))) //Skip over embedded quotation marks 
                         {
                             length++; startPos++;
                         }
-                        else if ((c == '"') && (d != '"')) //End of our string?
+                        else if (c == '"') //End of our string?
                         {
                             length = ((length < 1) ? 1 : length);
 
@@ -336,13 +359,13 @@ public static class CSharpLexer
                         }
                         else
                         {
-                            if ((c == '\\') && EscapeSequences.Contains(d)) //Escape Sequences
+                            if (!QUOTED_STRING && (c == '\\') && EscapeSequences.Contains(d)) //Escape Sequences
                             {
                                 length += ((d == '\\') ? 0 : -1);
 
                                 scintilla.SetStyling(length, style);
                                 {
-                                    startPos++; length = -1;
+                                    startPos++; length = 0;
                                 }
                                 scintilla.SetStyling(2, StyleEscapeSequence);
                             }
