@@ -324,12 +324,7 @@ public static class CSharpLexer
                     case STATE_STRING:
                         style = (VERBATIM ? StyleVerbatim : (QUOTED_STRING ? StyleQuotedString : StyleString));
 
-                        if (PARENTHESIS || ((c == '{') || (d == '}'))) //Formatted strings that are using braces
-                        {
-                            if (c == '{') { PARENTHESIS = true; }
-                            if (c == '}') { PARENTHESIS = false; }
-                        }
-                        else if (QUOTED_STRING)
+                        if (QUOTED_STRING)
                         {
                             if (c == '\'') //End of our Quoted string?
                             {
@@ -342,6 +337,11 @@ public static class CSharpLexer
                             {
                                 length++; startPos++;
                             }
+                        }
+                        else if (PARENTHESIS || ((c == '{') || (d == '}'))) //Formatted strings that are using braces
+                        {
+                            if (c == '{') { PARENTHESIS = true; }
+                            if (c == '}') { PARENTHESIS = false; }
                         }
                         else if (VERBATIM && ((c == '"') && (d == '"'))) //Skip over embedded quotation marks 
                         {
